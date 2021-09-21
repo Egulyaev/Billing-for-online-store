@@ -2,12 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .views import TicketViewSet
+from .views import day_purchases_list_api
 
-router = DefaultRouter()
-router.register('tickets', TicketViewSet, basename='api_tickets')
+# router = DefaultRouter()
+# router.register('tickets', day_purchases_list_api, basename='api_tickets')
 urlpatterns = [
-    path('', include(router.urls)),
+    #path('', include(router.urls)),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('day_report', day_purchases_list_api, name='api_day_report')
 ]

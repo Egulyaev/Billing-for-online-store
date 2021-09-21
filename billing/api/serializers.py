@@ -1,13 +1,13 @@
-from datetime import datetime
-
 from rest_framework import serializers
 
-from main.models import Promo
+
+class DateSerializer(serializers.Serializer):
+    date = serializers.DateField()
 
 
-class PromoSerializer(serializers.ModelSerializer):
-    current_date=serializers.DateTimeField(default=datetime.now())
-
-    class Meta:
-        fields = '__all__'
-        model = Promo
+class DayReportResponseSerializer(serializers.Serializer):
+    date = serializers.DateTimeField()
+    product_name = serializers.CharField()
+    product_price = serializers.IntegerField()
+    promo_name = serializers.CharField()
+    promo_percent = serializers.IntegerField()

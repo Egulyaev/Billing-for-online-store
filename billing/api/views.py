@@ -6,7 +6,8 @@ from main.models import Purchases
 
 
 class DayReportResponse:
-    def __init__(self, date, product_name, product_price, promo_name, promo_percent):
+    def __init__(self, date, product_name,
+                 product_price, promo_name, promo_percent):
         self.date = date
         self.product_name = product_name
         self.product_price = product_price

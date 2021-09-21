@@ -52,7 +52,7 @@ def day_purchases_list(request):
                 filter(buy_date=form.cleaned_data['purchase'])
             writer = csv.writer(response)
             writer.writerow(
-                ['Дата покупки',
+                ['Дата и время покупки',
                  'Наименование товара',
                  'Цена',
                  'Наименование акции',
@@ -61,7 +61,7 @@ def day_purchases_list(request):
             for purchase in purchases:
                 if purchase.product.promo.exists():
                     writer.writerow(
-                        [purchase.buy_date,
+                        [purchase.buy_time,
                          purchase.product,
                          purchase.product.price,
                          purchase.product.promo.get(),
@@ -69,7 +69,7 @@ def day_purchases_list(request):
                     )
                 elif purchase.product.category.promo.exists():
                     writer.writerow(
-                        [purchase.buy_date,
+                        [purchase.buy_time,
                          purchase.product,
                          purchase.product.price,
                          purchase.product.category.promo.get(),

@@ -92,7 +92,6 @@ def get_promo_effect_report(request):
         headers={'Content-Disposition': 'attachment;'
                                         ' filename="promo_effect.csv"'},
     )
-    promos = Promo.objects.all().exclude(category__isnull=True).prefetch_related('promobuy','category',).annotate(Count('promobuy'))
     writer = csv.writer(response)
     writer.writerow(
         ['Скидочная акция',
@@ -100,21 +99,50 @@ def get_promo_effect_report(request):
          'Среднее число продаваемых товаров в день со скидкой',
          'Среднее число продаваемых товаров в день без скидки']
     )
-    purchases = Purchases.objects.all().select_related('product', 'category')
-    for promo in promos:
-        days_count = promo.promobuy.annotate(day=TruncDay('buy_date')).values('day').annotate(count_purchase=Count('id')).order_by('day').count()
-        purchases_count = promo.promobuy__count
-        purchases_promo = purchases_count / days_count
-        purchases_not_promo = purchases.filter(product__category=promo.category).count() / days_count
+    promo_purchase = Promo.objects.all().exclude(category__isnull=True).prefetch_related('promobuy').annotate(
+        Count('promobuy'),
+        Count('promobuy__buy_date', distinct=True),
+    )
+    for promo in promo_purchase:
+        cnt_promo_buys = promo.promobuy__count
+        days_promo_buys = promo.promobuy__buy_date__count
+        avg_promo_buys = cnt_promo_buys / days_promo_buys
         writer.writerow(
             [
              promo.name,
              promo.category,
-             purchases_promo,
-             purchases_not_promo
-             ]
-        )
+             avg_promo_buys,
+             0
+             ])
     return response
+
+
+
+
+    # promos = Promo.objects.all().exclude(category__isnull=True).prefetch_related('promobuy','category',).annotate(Count('promobuy'))
+    # writer = csv.writer(response)
+    # writer.writerow(
+    #     ['Скидочная акция',
+    #      'Имя категории',
+    #      'Среднее число продаваемых товаров в день со скидкой',
+    #      'Среднее число продаваемых товаров в день без скидки']
+    # )
+    # purchases = Purchases.objects.all().select_related('product', 'category')
+    #
+    # for promo in promos:
+    #     days_count = promo.promobuy.annotate(day=TruncDay('buy_date')).values('day').annotate(count_purchase=Count('id')).order_by('day').count()
+    #     purchases_count = promo.promobuy__count
+    #     purchases_promo = purchases_count / days_count
+    #     purchases_not_promo = purchases.filter(product__category=promo.category).count() / days_count
+    #     writer.writerow(
+    #         [
+    #          promo.name,
+    #          promo.category,
+    #          purchases_promo,
+    #          purchases_not_promo
+    #          ]
+    #     )
+
 
 
 def get_promo_effect_report_product(request):

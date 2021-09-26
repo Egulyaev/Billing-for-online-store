@@ -47,41 +47,6 @@ class Product(models.Model):
         verbose_name = 'Товар'
 
 
-class Purchases(models.Model):
-    buy_time = models.DateTimeField(
-        blank=False,
-        null=True,
-        auto_now_add=True,
-        verbose_name='Время покупки'
-    )
-    buy_date = models.DateField(
-        blank=False,
-        null=True,
-        auto_now_add=True,
-        verbose_name='Дата покупки'
-    )
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.DO_NOTHING,
-        related_name='purchases',
-        verbose_name='Покупки'
-    )
-    buyer = models.ForeignKey(
-        User,
-        on_delete=models.DO_NOTHING,
-        related_name='purchases',
-        verbose_name='Покупатель'
-    )
-    promo_price = models.IntegerField(
-        null=True,
-        verbose_name='Цена с учетом скидки'
-    )
-
-    class Meta:
-        verbose_name_plural = 'Покупки'
-        verbose_name = 'Покупка'
-
-
 class Promo(models.Model):
     name = models.CharField(
         max_length=200,
@@ -113,3 +78,48 @@ class Promo(models.Model):
     class Meta:
         verbose_name_plural = 'Акции'
         verbose_name = 'Акция'
+
+
+class Purchases(models.Model):
+    buy_time = models.DateTimeField(
+        blank=False,
+        null=True,
+        auto_now_add=True,
+        verbose_name='Время покупки'
+    )
+    buy_date = models.DateField(
+        blank=False,
+        null=True,
+        auto_now_add=True,
+        verbose_name='Дата покупки'
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.DO_NOTHING,
+        related_name='purchases',
+        verbose_name='Покупки'
+    )
+    buyer = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        related_name='purchases',
+        verbose_name='Покупатель'
+    )
+    promo = models.ForeignKey(
+        Promo,
+        null=True,
+        on_delete=models.DO_NOTHING,
+        related_name='promobuy',
+        verbose_name='Скидка'
+    )
+    promo_price = models.IntegerField(
+        null=True,
+        verbose_name='Цена с учетом скидки'
+    )
+
+    def __str__(self):
+        return self.product
+
+    class Meta:
+        verbose_name_plural = 'Покупки'
+        verbose_name = 'Покупка'

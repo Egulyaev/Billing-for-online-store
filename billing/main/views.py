@@ -1,6 +1,6 @@
 import csv
 
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.db.models.functions import TruncDay
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
@@ -24,13 +24,17 @@ def create_purchase(request):
         )
     purchase = form.save(commit=False)
     if purchase.product.promo.exists():  # select_related
+        promo_id = purchase.product.promo.get().id
         purchase.promo_price = (purchase.product.price
                                 - purchase.product.price / 100
                                 * purchase.product.promo.get().percent)
+        purchase.promo = Promo.objects.get(id=promo_id)
     elif purchase.product.category.promo.exists():
+        promo_id = purchase.product.category.promo.get().id
         purchase.promo_price = (purchase.product.price
                                 - purchase.product.price / 100
                                 * purchase.product.category.promo.get().percent)
+        purchase.promo = Promo.objects.get(id=promo_id)
     else:
         purchase.promo_price = purchase.product.price
     purchase.save()
@@ -48,8 +52,7 @@ def day_purchases_list(request):
     if request.method == 'POST':
         form = GetDateForm(request.POST)
         if form.is_valid():
-            purchases = Purchases.objects. \
-                filter(buy_date=form.cleaned_data['purchase'])
+            purchases = Purchases.objects.select_related('product', 'promo').filter(buy_date=form.cleaned_data['purchase'])
             writer = csv.writer(response)
             writer.writerow(
                 ['Дата и время покупки',
@@ -59,28 +62,22 @@ def day_purchases_list(request):
                  'Процент скидки']
             )
             for purchase in purchases:
-                if purchase.product.promo.exists():
+                if purchase.promo:
                     writer.writerow(
-                        [purchase.buy_time,
-                         purchase.product,
-                         purchase.product.price,
-                         purchase.product.promo.get(),
-                         purchase.product.promo.get().percent]
-                    )
-                elif purchase.product.category.promo.exists():
-                    writer.writerow(
-                        [purchase.buy_time,
-                         purchase.product,
-                         purchase.product.price,
-                         purchase.product.category.promo.get(),
-                         purchase.product.category.promo.get().percent]
+                        [
+                        purchase.buy_time,
+                        purchase.product,
+                        purchase.product.price,
+                        purchase.promo.name,
+                        purchase.promo.percent
+                        ]
                     )
                 else:
                     writer.writerow(
-                        [purchase.buy_time,
-                         purchase.product,
-                         purchase.product.price, 0, 0]
-                    )
+                            [purchase.buy_time,
+                             purchase.product,
+                             purchase.product.price, 0, 0]
+                        )
             return response
     else:
         form = GetDateForm()
@@ -95,7 +92,7 @@ def get_promo_effect_report(request):
         headers={'Content-Disposition': 'attachment;'
                                         ' filename="promo_effect.csv"'},
     )
-    promos = Promo.objects.all().exclude(category__isnull=True)
+    promos = Promo.objects.all().exclude(category__isnull=True).prefetch_related('promobuy','category',).annotate(Count('promobuy'))
     writer = csv.writer(response)
     writer.writerow(
         ['Скидочная акция',
@@ -103,24 +100,19 @@ def get_promo_effect_report(request):
          'Среднее число продаваемых товаров в день со скидкой',
          'Среднее число продаваемых товаров в день без скидки']
     )
-
+    purchases = Purchases.objects.all().select_related('product', 'category')
     for promo in promos:
-        days_count = Purchases.objects. \
-            filter(product__category__promo=promo). \
-            annotate(day=TruncDay('buy_date')). \
-            values('day'). \
-            annotate(count_purchase=Count('id')). \
-            order_by('day').count()
-        purchases_count = Purchases.objects. \
-            filter(product__category__promo=promo).count()
+        days_count = promo.promobuy.annotate(day=TruncDay('buy_date')).values('day').annotate(count_purchase=Count('id')).order_by('day').count()
+        purchases_count = promo.promobuy__count
         purchases_promo = purchases_count / days_count
-        purchases = Purchases.objects.all().exclude(
-            product__category__promo=promo).count() / days_count
+        purchases_not_promo = purchases.filter(product__category=promo.category).count() / days_count
         writer.writerow(
-            [promo.name,
+            [
+             promo.name,
              promo.category,
              purchases_promo,
-             purchases]
+             purchases_not_promo
+             ]
         )
     return response
 

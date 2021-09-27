@@ -99,50 +99,26 @@ def get_promo_effect_report(request):
          'Среднее число продаваемых товаров в день со скидкой',
          'Среднее число продаваемых товаров в день без скидки']
     )
-    promo_purchase = Promo.objects.all().exclude(category__isnull=True).prefetch_related('promobuy').annotate(
-        Count('promobuy'),
+    promo_purchase = Promo.objects.all().exclude(category__isnull=True).select_related('category').annotate(
+        Count('promobuy__id', distinct=True),
         Count('promobuy__buy_date', distinct=True),
+        Count('category__product__purchases__id', distinct=True)
     )
     for promo in promo_purchase:
-        cnt_promo_buys = promo.promobuy__count
+        cnt_promo_buys = promo.promobuy__id__count
         days_promo_buys = promo.promobuy__buy_date__count
         avg_promo_buys = cnt_promo_buys / days_promo_buys
+        cnt_not_promo_buys = promo.category__product__purchases__id__count - cnt_promo_buys
+        avg_not_promo_buys = cnt_not_promo_buys / days_promo_buys
         writer.writerow(
             [
              promo.name,
              promo.category,
              avg_promo_buys,
-             0
-             ])
+             avg_not_promo_buys
+             ]
+        )
     return response
-
-
-
-
-    # promos = Promo.objects.all().exclude(category__isnull=True).prefetch_related('promobuy','category',).annotate(Count('promobuy'))
-    # writer = csv.writer(response)
-    # writer.writerow(
-    #     ['Скидочная акция',
-    #      'Имя категории',
-    #      'Среднее число продаваемых товаров в день со скидкой',
-    #      'Среднее число продаваемых товаров в день без скидки']
-    # )
-    # purchases = Purchases.objects.all().select_related('product', 'category')
-    #
-    # for promo in promos:
-    #     days_count = promo.promobuy.annotate(day=TruncDay('buy_date')).values('day').annotate(count_purchase=Count('id')).order_by('day').count()
-    #     purchases_count = promo.promobuy__count
-    #     purchases_promo = purchases_count / days_count
-    #     purchases_not_promo = purchases.filter(product__category=promo.category).count() / days_count
-    #     writer.writerow(
-    #         [
-    #          promo.name,
-    #          promo.category,
-    #          purchases_promo,
-    #          purchases_not_promo
-    #          ]
-    #     )
-
 
 
 def get_promo_effect_report_product(request):
@@ -153,7 +129,11 @@ def get_promo_effect_report_product(request):
         headers={'Content-Disposition': 'attachment; '
                                         'filename="promo_effect_product.csv"'},
     )
-    promos = Promo.objects.all().exclude(product__isnull=True)
+    promos = Promo.objects.all().exclude(product__isnull=True).select_related('product').annotate(
+        Count('promobuy__id', distinct=True),
+        Count('promobuy__buy_date', distinct=True),
+        Count('product__purchases__id', distinct=True)
+    )
     writer = csv.writer(response)
     writer.writerow(
         ['Скидочная акция',
@@ -162,19 +142,17 @@ def get_promo_effect_report_product(request):
          'Среднее число продаваемых товаров в день без скидки']
     )
     for promo in promos:
-        days_count = Purchases.objects. \
-            filter(product__promo=promo). \
-            annotate(day=TruncDay('buy_date')). \
-            values('day'). \
-            annotate(count_purchase=Count('id')). \
-            order_by('day').count()
-        purchases_count = Purchases. \
-            objects.filter(product__promo=promo). \
-            count()
-        purchases_promo = purchases_count / days_count
-        purchases = Purchases.objects.all().exclude(
-            product__promo=promo).count() / days_count
+        cnt_promo_buys = promo.promobuy__id__count
+        days_promo_buys = promo.promobuy__buy_date__count
+        avg_promo_buys = cnt_promo_buys / days_promo_buys
+        cnt_not_promo_buys = promo.product__purchases__id__count - cnt_promo_buys
+        avg_not_promo_buys = cnt_not_promo_buys / days_promo_buys
         writer.writerow(
-            [promo.name, promo.product, purchases_promo, purchases]
+            [
+                promo.name,
+                promo.product,
+                avg_promo_buys,
+                avg_not_promo_buys
+            ]
         )
     return response

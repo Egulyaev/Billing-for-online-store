@@ -102,12 +102,13 @@ def get_promo_effect_report(request):
     promo_purchase = Promo.objects.all().exclude(category__isnull=True).select_related('category').annotate(
         cnt_promo_buys=Count('promobuy__id', distinct=True),
         days_promo_buys=Count('promobuy__buy_date', distinct=True),
-        cnt_all_buys=Count('category__product__purchases__id', distinct=True)
+        cnt_all_buys=Count('category__product__purchases__id', distinct=True),
+        days_not_promo_buys = Count('category__product__purchases__buy_date', distinct=True)
     )
     for promo in promo_purchase:
         avg_promo_buys = promo.cnt_promo_buys / promo.days_promo_buys
         cnt_not_promo_buys = promo.cnt_all_buys - promo.cnt_promo_buys
-        avg_not_promo_buys = cnt_not_promo_buys / promo.days_promo_buys
+        avg_not_promo_buys = cnt_not_promo_buys / promo.days_not_promo_buys
         writer.writerow(
             [
                 promo.name,
@@ -130,7 +131,8 @@ def get_promo_effect_report_product(request):
     promos = Promo.objects.all().exclude(product__isnull=True).select_related('product').annotate(
         cnt_promo_buys=Count('promobuy__id', distinct=True),
         days_promo_buys=Count('promobuy__buy_date', distinct=True),
-        cnt_all_buys=Count('product__purchases__id', distinct=True)
+        cnt_all_buys=Count('product__purchases__id', distinct=True),
+        days_not_promo_buys = Count('product__purchases__buy_date', distinct=True)
     )
     writer = csv.writer(response)
     writer.writerow(
@@ -140,6 +142,7 @@ def get_promo_effect_report_product(request):
          'Среднее число продаваемых товаров в день без скидки']
     )
     for promo in promos:
+        print(promo.name, promo.days_not_promo_buys)
         avg_promo_buys = promo.cnt_promo_buys / promo.days_promo_buys
         cnt_not_promo_buys = promo.cnt_all_buys - promo.cnt_promo_buys
         avg_not_promo_buys = cnt_not_promo_buys / promo.days_promo_buys
